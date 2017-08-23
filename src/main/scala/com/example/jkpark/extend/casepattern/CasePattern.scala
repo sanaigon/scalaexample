@@ -104,6 +104,16 @@ object CasePattern {
     println(op)
     println(left)
     println(right)
+
+
+    val data = new Array(500000)
+    var i = 0
+    while(true)
+      {
+
+        Thread.sleep(500)
+      }
+
   }
 
 }

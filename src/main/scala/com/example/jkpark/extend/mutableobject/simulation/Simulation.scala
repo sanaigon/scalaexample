@@ -24,6 +24,7 @@ abstract class Simulation {
     else ag.head :: insert(ag.tail, item)
   }
 
+  // 두 번째 파라미터는 Call by name으로 인자를 전달하는 시점에 즉시 인자를 계산하지 않는다.
   def afterDelay(deplay: Int)(block: => Unit) = {
     // Delay만큼 시간을 추가한 WorkItem을 만든다.
     val item = WorkItem(currentTime + deplay, () => block)
@@ -33,7 +34,9 @@ abstract class Simulation {
   }
 
   private def next() = {
+    // 빈 리스트에 대한 조건이 없으므로 MatchError를 반환한다는 경고를 제거하기 위해 @unChecked를 썼다.
     (agenda: @unchecked) match  {
+      // 패턴 매치를 통해 head와 tail을 분리한다.
       case item :: rest =>
         agenda = rest
         curtime = item.time
@@ -43,8 +46,7 @@ abstract class Simulation {
 
   def run() = {
     afterDelay(0) {
-      println("*** simulation started, time = " +
-      curtime + " ***")
+      println("*** simulation started, time = " + curtime + " ***")
     }
     while( !agenda.isEmpty) next()
   }
