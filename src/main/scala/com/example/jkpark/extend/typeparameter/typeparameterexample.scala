@@ -70,8 +70,15 @@ class Apple extends Fruit{
 
 // 생성자 앞에 private를 붙이는 경우 생성자를 숨기게된다.
 class Queue[+T] (
-  private val leading: List[T], // 앞 부분 부터 원소를 저장
-  private val trailing: List[T] // 원소를 큐의 뒷 부분 부터 저장
+  // 만약 아래와 같은 경우 private[this]를 제거 하면 컴파일 되지 않는다.
+  // 어떤 필드가 정의된 바로 그 객체에서만 접근이 가능하다면, 변성에 아무 문제를 일으키지 않는다.
+  // 변성 타입이 타입 오류를 발생시키는 경우는 다음과 같다.
+  // 객체가 정의된 시점의 타입보다 정적으로 더 약한 타입의 객체에 대한 참조가 발생하게 되는 경우이다.
+  // 하지만 아래의 경우는 정의한 객체만 접근이 가능하기 때문에 문제를 일으키지 않는다.
+  // 스칼라는 +, - 같은 변성 표기가 있는 타입 파라미터의 변성에 맞는 위치 사용을 검사할 때
+  // 객체 비공개 정의는 제외하고 검사한다.
+  private[this] var leading: List[T], // 앞 부분 부터 원소를 저장
+  private[this] var trailing: List[T] // 원소를 큐의 뒷 부분 부터 저장
 ){
 
   /*
@@ -87,17 +94,27 @@ class Queue[+T] (
     * 만약 비어있지 않다면 현재의 leading을 제공하기 위해 this를 반환한다.
     * @return
     */
-  private def mirror =
+//  private def mirror =
+//    if (leading.isEmpty)
+//      new Queue(trailing.reverse, Nil)
+//    else
+//      this
+  private def mirror() =
     if (leading.isEmpty)
-      new Queue(trailing.reverse, Nil)
-    else
-      this
+      while(!trailing.isEmpty) {
+        leading = trailing.head :: leading
+        trailing = trailing.tail
+      }
 
   /**
     * head는 mirror를 수행한 후 나오는 Queue의 head값이다.
     * @return
     */
-  def head = mirror.leading.head
+  //def head = mirror.leading.head
+  def head = {
+    mirror()
+    leading.head
+  }
 
   /**
     * tail 값은 mirror를 수행한 q에 대해
@@ -105,8 +122,8 @@ class Queue[+T] (
     * @return
     */
   def tail = {
-    val q = mirror
-    new Queue(q.leading.tail, q.trailing)
+    mirror()
+    new Queue(leading.tail, trailing)
   }
 
   /**
@@ -131,11 +148,27 @@ object Queue {
 }
 
 object TypeParameterExample {
+
+  // getTitle은 Book의 슈퍼타입은 Publication을 인자로 받는다.
+  // 이렇게 해도 잘 동작하는 이유는??
+  // printBookList의 인자 info의 파라미터 Type이 Book이기 때문에
+  // printBookList 메소드의 본문은 그 info에 오직 Book만을 넘길 수 있다.
+  // 그리고 getTitle의 파라미터 Type은 publication이기 때문에
+  // getTitle 함수 본문에서는 publication의 맴버에만 접근 할 수 있다.
+  // Book은 publication의 서브 클래스이므로 서브클래스들은 모든 메소들을 가지고 있다.
+  // 즉 아래와 같이 Publication => String이 Book => AnyRef의 서브 타입이기에 컴파일이 가능하다.
+  // 이는 인자값은 반공변성을 띄고 있고 결과 값은 공변성을 띄도록 Function1이 정의를 했기 때문에 가능하다.
+  // 그래서 반공변을 띄도록 Type을 지정하면 자신보다 Super Class들 까지 모두 인자로 받을 수 있도록 설정하는 것이다.
+  // 공변성을 띄도록 설정 하는 경우 자신의 Subtype으로만 인자를 받을 수 있도록 지정하는 것이다.
+  def getTitle(p: Publication): String = p.title
+
   def main(args: Array[String]): Unit = {
     val data: Queue[Apple] = Queue(new Apple)
     val orangeObj = new Orange
     val retVal: Queue[Fruit] = data.enqueue(orangeObj)
     //println(data.tail)
-    println(retVal.tail.head)
+
+    // 함수의 결과 타입은 공변성을 갖고 있기 때문에 아래의 함수는 타입검사를 통과한다.
+    Library.printBookList(getTitle)
   }
 }
